@@ -1,0 +1,83 @@
+service: aws-sdk-optimization
+
+plugins:
+  - serverless-step-functions
+  - serverless-pseudo-parameters
+  - serverless-iam-roles-per-function
+
+provider:
+  name: aws
+  runtime: nodejs8.10
+  stage: dev
+  tracing:
+    lambda: true
+
+functions:
+  loop:
+    handler: functions/loop.handler
+    timeout: 900
+    tracing: PassThrough
+    iamRoleStatements:
+      - Effect: Allow
+        Action: 
+          - lambda:GetFunctionConfiguration
+          - lambda:UpdateFunctionConfiguration
+          - lambda:InvokeFunction
+        Resource: "*"
+
+  set-start-time:
+    handler: functions/set-start-time.handler
+    tracing: PassThrough
+
+  analyze:
+    handler: functions/analyze.handler
+    timeout: 600
+    tracing: PassThrough
+    iamRoleStatements:
+      - Effect: Allow
+        Action:
+          - xray:GetTraceSummaries
+          - xray:BatchGetTraces
+        Resource: "*"
+
+  no-aws-sdk:
+    handler: functions/no-aws-sdk.handler
+  aws-sdk:
+    handler: functions/aws-sdk.handler
+  dynamodb-only:
+    handler: functions/dynamodb-only.handler
+  aws-xray-sdk:
+    handler: functions/aws-xray-sdk.handler
+  aws-xray-sdk-core:
+    handler: functions/aws-xray-sdk-core.handler
+    
+stepFunctions:
+  stateMachines:
+    runColdStartExperiment:
+      name: aws-sdk-optimization
+      definition:
+        StartAt: SetStartTime
+        States:
+          SetStartTime:
+            Type: Task
+            Resource: arn:aws:lambda:#{AWS::Region}:#{AWS::AccountId}:function:${self:service}-${self:provider.stage}-set-start-time
+            Next: Loop
+          Loop:
+            Type: Task
+            Resource: arn:aws:lambda:#{AWS::Region}:#{AWS::AccountId}:function:${self:service}-${self:provider.stage}-loop
+            Next: IsComplete
+          IsComplete:
+            Type: Choice
+            Choices:
+              - Variable: $.count
+                NumericEquals: 0
+                Next: Wait30Seconds
+            Default: Loop
+          Wait30Seconds:
+            Type: Wait
+            Seconds: 30
+            Next: Analyze
+          Analyze:
+            Type: Task
+            Resource: arn:aws:lambda:#{AWS::Region}:#{AWS::AccountId}:function:${self:service}-${self:provider.stage}-analyze
+            End: true
