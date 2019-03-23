@@ -48,6 +48,8 @@ functions:
     handler: functions/dynamodb-only.handler
   aws-xray-sdk:
     handler: functions/aws-xray-sdk.handler
+  aws-xray-sdk-require-only:
+    handler: functions/aws-xray-sdk-require-only.handler
   aws-xray-sdk-core:
     handler: functions/aws-xray-sdk-core.handler
   trace-dynamodb-only:
