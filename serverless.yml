@@ -50,6 +50,8 @@ functions:
     handler: functions/aws-xray-sdk.handler
   aws-xray-sdk-core:
     handler: functions/aws-xray-sdk-core.handler
+  trace-dynamodb-only:
+    handler: functions/trace-dynamodb-only.handler
     
 stepFunctions:
   stateMachines:
